@@ -147,7 +147,7 @@ void printInfoDay(int currentDay) {
   if (dayTemp != currentDay) {
     dayTemp = currentDay;
     logMensaje("Día actual: ");
-    logMensaje(currentDay);
+    logMensaje(String(currentDay));
   }
 }
 
@@ -162,14 +162,14 @@ void dht11Info(int result, int temperature, int humidity) {
   if (temperatureTemp != temperature) {
     temperatureTemp = temperature;
     logMensaje("Temperature: ");
-    logMensaje(temperature);
+    logMensaje(String(temperature));
     logMensaje(" °C\t");
   }
 
   if (humidityTemp != humidity) {
     humidityTemp = humidity;
     logMensaje("Humidity: ");
-    logMensaje(humidity);
+    logMensaje(String(humidity));
     logMensaje(" %");
   }
 }
