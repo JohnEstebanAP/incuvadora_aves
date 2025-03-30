@@ -146,31 +146,31 @@ void printInfoDay(int currentDay) {
 
   if (dayTemp != currentDay) {
     dayTemp = currentDay;
-    Serial.print("Día actual: ");
-    Serial.println(currentDay);
+    logMensaje("Día actual: ");
+    logMensaje(currentDay);
   }
 }
 
 void dht11Info(int result, int temperature, int humidity) {
   if (result != 0) {
     // Print error message based on the error code.
-    Serial.println(DHT11::getErrorString(result));
+    logMensaje(DHT11::getErrorString(result));
     return;
   }
 
 
   if (temperatureTemp != temperature) {
     temperatureTemp = temperature;
-    Serial.print("Temperature: ");
-    Serial.print(temperature);
-    Serial.print(" °C\t");
+    logMensaje("Temperature: ");
+    logMensaje(temperature);
+    logMensaje(" °C\t");
   }
 
   if (humidityTemp != humidity) {
     humidityTemp = humidity;
-    Serial.print("Humidity: ");
-    Serial.print(humidity);
-    Serial.println(" %");
+    logMensaje("Humidity: ");
+    logMensaje(humidity);
+    logMensaje(" %");
   }
 }
 
@@ -279,7 +279,7 @@ ICACHE_FLASH_ATTR void iniciarAccessPoint() {
   logMensaje(F("Access Point activado. IP:"));
   logMensaje(WiFi.softAPIP().toString().c_str());
 
-  Serial.println(ESP.getResetInfo());
+  logMensaje(ESP.getResetInfo());
 }
 
 // Función para conectarse a modo Estación
