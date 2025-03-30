@@ -135,9 +135,9 @@ void validateTemperature(int currentDay, int temperature) {
     return;
   }
   if (temperature <= temperatureCiclo_1 && currentDay <= dayCiclo1) {
-    digitalWrite(relethumidity, HIGH);
+    digitalWrite(reletTemperature, HIGH);
   } else if (temperature > temperatureCiclo_1_5 && currentDay <= dayCiclo1) {
-    digitalWrite(relethumidity, LOW);
+    digitalWrite(reletTemperature, LOW);
   }
 
   //ciclo2
@@ -145,9 +145,9 @@ void validateTemperature(int currentDay, int temperature) {
     return;
   }
   if (temperature <= temperatureCiclo_2 && currentDay > dayCiclo2) {
-    digitalWrite(relethumidity, HIGH);
+    digitalWrite(reletTemperature, HIGH);
   } else if (temperature > temperatureCiclo_2_5 && currentDay > dayCiclo2) {
-    digitalWrite(relethumidity, LOW);
+    digitalWrite(reletTemperature, LOW);
   }
 
   //ciclo3
@@ -155,9 +155,9 @@ void validateTemperature(int currentDay, int temperature) {
     return;
   }
   if (temperature <= temperatureCiclo_3 && currentDay > dayCiclo3) {
-    digitalWrite(relethumidity, HIGH);
+    digitalWrite(reletTemperature, HIGH);
   } else if (temperature > temperatureCiclo_3_5 && currentDay > dayCiclo3) {
-    digitalWrite(relethumidity, LOW);
+    digitalWrite(reletTemperature, LOW);
   }
 
   //ciclo4
@@ -165,9 +165,9 @@ void validateTemperature(int currentDay, int temperature) {
     return;
   }
   if (temperature <= temperatureCiclo_4 && currentDay > dayCiclo4) {
-    digitalWrite(relethumidity, HIGH);
+    digitalWrite(reletTemperature, HIGH);
   } else if (temperature > temperatureCiclo_4_5 && currentDay > dayCiclo4) {
-    digitalWrite(relethumidity, LOW);
+    digitalWrite(reletTemperature, LOW);
   }
 }
 
