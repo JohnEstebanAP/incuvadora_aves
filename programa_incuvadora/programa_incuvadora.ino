@@ -122,8 +122,7 @@ void startServerWebInLoop() {
     unsigned long timeout = millis();
     while (!client.available() && client.connected()) {
       if (millis() - timeout > 5000) {  // 5 segundos de espera
-        logMensaje(F("Cliente no disponible: timeout."));
-        client.stop();  // Finalizar la conexión
+        logMensaje(F("Cliente no disponible: timeout.")); 
         return;         // Salir de la función
       }
       delay(1);
@@ -329,6 +328,8 @@ ICACHE_FLASH_ATTR void manejarComandos(const char* request) {
     logMensaje(String(F("Contraseña: ")) + passwordClient);
 
     conectarEstacion();
+    // Finalizar la conexión
+    server.available().stop();
   }
 }
 
