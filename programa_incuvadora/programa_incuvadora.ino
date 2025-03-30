@@ -27,12 +27,15 @@ No le de vuelta después del dia 18
 // Include the DHT11 library for interfacing with the sensor.
 */
 #include <DHT11.h>
+#include <ESP8266WiFi.h>
 
 // Create an instance of the DHT11 class.
 //Entradas
 DHT11 dht11(D8);
+// Configuración inicial
+WiFiServer server(80);
 
-//saldas
+//salidas
 const int reletTemperature = D13;
 const int relethumidity = D12;
 
@@ -68,6 +71,16 @@ int temperatureCiclo_3_5 = 0;
 int temperatureCiclo_4 = 0;
 int temperatureCiclo_4_5 = 0;
 
+//configuracion para red local
+String red = "MiRed";
+String passwordRed = "MiRed1234";
+
+// Servidor HTTP
+//configuracion para conecion a red wifi
+String logConsola = "";
+String ssidClient = "";
+String passwordClient = "";
+
 void setup() {
   Serial.begin(9600);
   // Uncomment the line below to set a custom delay between sensor readings (in milliseconds).
@@ -77,6 +90,8 @@ void setup() {
 
   pinMode(reletTemperature, OUTPUT);
   pinMode(relethumidity, OUTPUT);
+
+  iniciarAccessPoint();
 }
 
 void loop() {
@@ -95,7 +110,38 @@ void loop() {
   dht11Info(result, temperature, humidity);
   validateTemperature(currentDay, temperature);
   validateUmedity(currentDay, humidity);
+
+  startServerWebInLoop();
 }
+
+void startServerWebInLoop() {
+  WiFiClient client = server.available();
+  if (client) {
+    logMensaje(F("Nuevo cliente conectado."));
+
+    unsigned long timeout = millis();
+    while (!client.available() && client.connected()) {
+      if (millis() - timeout > 5000) {  // 5 segundos de espera
+        logMensaje(F("Cliente no disponible: timeout."));
+        client.stop();  // Finalizar la conexión
+        return;         // Salir de la función
+      }
+      delay(1);
+    }
+
+    char request[256];
+    int length = client.readBytesUntil('\r', request, sizeof(request) - 1);
+    request[length] = '\0';  // Asegurar el fin de la cadena
+    logMensaje(F("Solicitud recibida:"));
+    logMensaje(request);
+
+    manejarComandos(request);
+    enviarPaginaWeb(client);
+    client.flush();
+    client.stop();
+  }
+}
+
 void printInfoDay(int currentDay) {
 
   if (dayTemp != currentDay) {
@@ -215,5 +261,152 @@ void validateUmedity(int currentDay, int humidity) {
     digitalWrite(relethumidity, HIGH);
   } else if (humidity > humidityCiclo_4_5 && currentDay > dayCiclo4) {
     digitalWrite(relethumidity, LOW);
+  }
+}
+
+// Función para iniciar en modo Access Point
+ICACHE_FLASH_ATTR void iniciarAccessPoint() {
+  logMensaje(F("Iniciando Access Point..."));
+  server.stop();  // Detener servidor HTTP previamente iniciado
+  WiFi.disconnect(true);
+  delay(100);
+  WiFi.mode(WIFI_AP);
+
+  //WiFi.softAP(redBuffer, passwordBuffer);
+  WiFi.softAP(red, passwordRed);
+  server.begin();  // Reiniciar servidor en modo AP
+
+  logMensaje(F("Access Point activado. IP:"));
+  logMensaje(WiFi.softAPIP().toString().c_str());
+
+  Serial.println(ESP.getResetInfo());
+}
+
+// Función para conectarse a modo Estación
+ICACHE_FLASH_ATTR void conectarEstacion() {
+  server.stop();
+  // Detener servidor HTTP previamente iniciado
+  WiFi.disconnect(true);  // Desconectar configuraciones previas
+
+  delay(100);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssidClient, passwordClient);
+  logMensaje(F("Conectando al WiFi..."));
+
+  unsigned long startAttemptTime = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 15000) {
+    delay(500);
+    logMensaje(F("Intentando conectar..."));
+  }
+  logMensaje("Estado de conexión WiFi: " + String(WiFi.status()));
+  if (WiFi.status() == WL_CONNECTED) {
+    logMensaje(F("Conexión establecida. IP:"));
+    logMensaje(WiFi.localIP().toString());
+    server.begin();  // Reiniciar servidor en modo AP
+  } else {
+    logMensaje(F("Error al conectar. Revisar credenciales."));
+    iniciarAccessPoint();
+  }
+}
+
+// Función para manejar comandos del navegador
+ICACHE_FLASH_ATTR void manejarComandos(const char* request) {
+  if (strstr(request, "SSID_LOCAL=") && strstr(request, "PASSWORD_LOCAL=")) {
+    parsearParametro(request, "SSID_LOCAL=", red);
+    parsearParametro(request, "PASSWORD_LOCAL=", passwordRed);
+
+    logMensaje(F("Datos recibidos:"));
+    logMensaje(String(F("SSID_LOCAL: ")) + red);
+    logMensaje(String(F("Contraseña_LOCAL: ")) + passwordRed);
+
+    iniciarAccessPoint();
+  } else if (strstr(request, "SSID=") && strstr(request, "PASSWORD=")) {
+    parsearParametro(request, "SSID=", ssidClient);
+    parsearParametro(request, "PASSWORD=", passwordClient);
+
+    logMensaje(F("Datos recibidos:"));
+    logMensaje(String(F("SSID: ")) + ssidClient);
+    logMensaje(String(F("Contraseña: ")) + passwordClient);
+
+    conectarEstacion();
+  }
+}
+
+// Función para generar la página web
+ICACHE_FLASH_ATTR void enviarPaginaWeb(WiFiClient& client) {
+  client.println(F("HTTP/1.1 200 OK"));
+  client.println(F("Content-Type: text/html"));
+  client.println(F("Connection: close"));
+  client.println();
+
+  client.println(F("<html><head><title>Control ESP8266</title></head><body>"));
+  client.println(F("<h1>Configuración WiFi</h1>"));
+
+  // Mostrar log en la página web
+  client.println(F("<h2>Log de la Consola</h2><div style='font-family:monospace;'>"));
+  client.println(logConsola);
+  client.println(F("</div>"));
+
+  // Formulario de configuración para conectar a red wifi
+  client.println(F("<h2>Configuración para conectar a red wifi</h2>"));
+  client.println(F("<form method='GET'>"));
+  client.println(F("Nombre:<br><input type='text' name='SSID'><br>"));
+  client.println(F("Contraseña:<br><input type='text' name='PASSWORD'><br><br>"));
+  client.println(F("<input type='submit' value='Conectar a una red wifi'>"));
+  client.println(F("</form>"));
+
+  client.println(F("<br>"));
+  client.println(F("<br>"));
+
+  // Formulario de configuración de red local
+  client.println(F("<h2>Configuración de red local</h2>"));
+  client.println(F("<h4>Conectarse o actualizar nombre de Red Local</h4>"));
+  client.println(F("<form method='GET'>"));
+  client.println(F("Nombre:<br><input type='text' name='SSID_LOCAL'><br>"));
+  client.println(F("Contraseña:<br><input type='text' name='PASSWORD_LOCAL'><br><br>"));
+  client.println(F("<input type='submit' value='Crear red local'>"));
+  client.println(F("</form>"));
+
+  client.println(F("</body></html>"));
+}
+
+// Función para extraer parámetros de la solicitud HTTP
+ICACHE_FLASH_ATTR void parsearParametro(const String& request, const String& parametro, String& output) {
+  // Buscar el inicio del parámetro en el request
+  int startIndex = request.indexOf(parametro);
+  if (startIndex != -1) {
+    startIndex += parametro.length();                 // Avanzar después del parámetro
+    int endIndex = request.indexOf('&', startIndex);  // Buscar el fin del parámetro
+    if (endIndex == -1) {
+      endIndex = request.indexOf(' ', startIndex);  // Buscar espacio si no hay '&'
+    }
+    if (endIndex == -1) {
+      endIndex = request.length();  // Si no hay '&', tomar hasta el final
+    }
+    output = request.substring(startIndex, endIndex);  // Extraer el valor
+  } else {
+    output = "";  // Si no se encuentra, devolver vacío
+  }
+}
+
+
+// Función para manejar log con literales en memoria flash
+ICACHE_FLASH_ATTR void logMensaje(const __FlashStringHelper* mensaje) {
+  Serial.println(mensaje);
+  logConsola += String(mensaje) + "<br>";
+  limitarLog();
+}
+
+// Función para manejar log con cadenas dinámicas
+ICACHE_FLASH_ATTR void logMensaje(const String& mensaje) {
+  Serial.println(mensaje);
+  logConsola += mensaje + "<br>";
+  limitarLog();
+}
+
+// Función auxiliar para limitar el tamaño del log
+ICACHE_FLASH_ATTR void limitarLog() {
+  if (logConsola.length() > 2048) {  // Limitar el tamaño del log
+    logConsola = logConsola.substring(logConsola.length() - 150);
   }
 }
